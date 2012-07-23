@@ -74,7 +74,7 @@ class AppLoaderCommands(object):
 		envelopeData = '820283818B' + hex_ber_length(envelopeData) + envelopeData
 		
 		# d1 = SMS-PP Download, d2 = Cell Broadcast Download
-		envelopeData = 'd1' + hex_ber_length(envelopeData) + envelopeData;	
+		envelopeData = 'd1' + hex_ber_length(envelopeData) + envelopeData;
 		response = self._tp.send_apdu_checksw('a0c20000' + ('%02x' % (len(envelopeData) / 2)) + envelopeData)[0]
 
 		# Unwrap response
@@ -238,6 +238,7 @@ parser.add_argument('--print-info', action='store_true')
 parser.add_argument('-n', '--new-card-required', action='store_true')
 parser.add_argument('-z', '--sleep_after_insertion', type=float, default=0.0)
 parser.add_argument('--disable-pin')
+parser.add_argument('-t', '--list-applets', action='store_true')
 
 args = parser.parse_args()
 
@@ -274,3 +275,24 @@ if args.print_info:
 
 if args.disable_pin:
 	sl.send_apdu_checksw('0026000108' + args.disable_pin.encode("hex") + 'ff' * (8 - len(args.disable_pin)))
+
+if args.list_applets:
+	(data, status) = ac.send_wrapped_apdu('80f21000024f0000c0000000')
+	while status == '6310':
+		(partData, status) = ac.send_wrapped_apdu('80f21001024f0000c0000000')
+		data = data + partData
+
+	while len(data) > 0:
+		aidlen = int(data[0:2],16) * 2
+		aid = data[2:aidlen + 2]
+		state = data[aidlen + 2:aidlen + 4]
+		privs = data[aidlen + 4:aidlen + 6]
+		num_instances = int(data[aidlen + 6:aidlen + 8], 16)
+		print 'AID: ' + aid + ', State: ' + state + ', Privs: ' + privs
+		data = data[aidlen + 8:]
+		while num_instances > 0:
+			aidlen = int(data[0:2],16) * 2
+			aid = data[2:aidlen + 2]
+			print "\tInstance AID: " + aid
+			data = data[aidlen + 2:]
+			num_instances = num_instances - 1
