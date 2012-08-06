@@ -24,7 +24,7 @@
 #
 
 from pySim.commands import SimCardCommands
-from pySim.utils import swap_nibbles
+from pySim.utils import swap_nibbles, rpad, b2h
 try:
 	import argparse
 except Exception, err:
@@ -241,8 +241,11 @@ parser.add_argument('--print-info', action='store_true')
 parser.add_argument('-n', '--new-card-required', action='store_true')
 parser.add_argument('-z', '--sleep_after_insertion', type=float, default=0.0)
 parser.add_argument('--disable-pin')
+parser.add_argument('--pin')
 parser.add_argument('-t', '--list-applets', action='store_true')
 parser.add_argument('--tar')
+parser.add_argument('--dump-phonebook', action='store_true')
+parser.add_argument('--set-phonebook-entry', nargs=4)
 
 args = parser.parse_args()
 
@@ -265,6 +268,9 @@ time.sleep(args.sleep_after_insertion)
 print "ICCID: " + swap_nibbles(sc.read_binary(['3f00', '2fe2'])[0])
 ac.send_terminal_profile()
 
+if args.pin:
+	sc.verify_chv(1, args.pin)
+
 if args.delete_app:
 	ac.delete_aid(args.delete_app)
 
@@ -279,6 +285,27 @@ if args.print_info:
 
 if args.disable_pin:
 	sl.send_apdu_checksw('0026000108' + args.disable_pin.encode("hex") + 'ff' * (8 - len(args.disable_pin)))
+
+if args.dump_phonebook:
+	num_records = sc.record_count(['3f00','7f10','6f3a'])
+	print ("Phonebook: %d records available" % num_records)
+	for record_id in range(1, num_records + 1):
+		print sc.read_record(['3f00','7f10','6f3a'], record_id)
+
+if args.set_phonebook_entry:
+	num_records = sc.record_count(['3f00','7f10','6f3a'])
+	record_size = sc.record_size(['3f00','7f10','6f3a'])
+	record_num = int(args.set_phonebook_entry[0])
+	if (record_num < 1) or (record_num > num_records):
+		raise RuntimeError("Invalid phonebook record number")
+	encoded_name = rpad(b2h(args.set_phonebook_entry[1]), (record_size - 14) * 2)
+	if len(encoded_name) > ((record_size - 14) * 2):
+		raise RuntimeError("Name is too long")
+	if len(args.set_phonebook_entry[2]) > 20:
+		raise RuntimeError("Number is too long")
+	encoded_number = swap_nibbles(rpad(args.set_phonebook_entry[2], 20))
+	record = encoded_name + ('%02x' % len(args.set_phonebook_entry[2])) + args.set_phonebook_entry[3] + encoded_number + 'ffff'
+	sc.update_record(['3f00','7f10','6f3a'], record_num, record)
 
 if args.list_applets:
 	(data, status) = ac.send_wrapped_apdu('80f21000024f0000c0000000')
