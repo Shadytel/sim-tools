@@ -203,6 +203,9 @@ class AppLoaderCommands(object):
 			toolkit_params = toolkit_params + args.priority_level + ('%02x' % args.max_timers)
 			toolkit_params = toolkit_params + ('%02x' % args.max_menu_entry_text)
 			toolkit_params = toolkit_params + ('%02x' % args.max_menu_entries) + '0000' * args.max_menu_entries + '0000'
+			if args.tar:
+				assert len(args.tar) % 6 == 0
+				toolkit_params = toolkit_params + ('%02x' % (len(args.tar) / 2)) + args.tar
 			toolkit_params = 'ca' + ('%02x' % (len(toolkit_params) / 2)) + toolkit_params
 
 		assert len(args.nonvolatile_memory_required) == 4
@@ -239,6 +242,7 @@ parser.add_argument('-n', '--new-card-required', action='store_true')
 parser.add_argument('-z', '--sleep_after_insertion', type=float, default=0.0)
 parser.add_argument('--disable-pin')
 parser.add_argument('-t', '--list-applets', action='store_true')
+parser.add_argument('--tar')
 
 args = parser.parse_args()
 
