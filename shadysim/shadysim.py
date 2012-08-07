@@ -95,7 +95,7 @@ class AppLoaderCommands(object):
 	def delete_aid(self, aid, delete_related=True):
 		aidDesc = '4f' + ('%02x' % (len(aid) / 2)) + aid
 		apdu = '80e400' + ('80' if delete_related else '00') + ('%02x' % (len(aidDesc) / 2)) + aidDesc + '00c0000000'
-		return self.send_wrapped_apdu(apdu)
+		return self.send_wrapped_apdu_checksw(apdu)
 
 	def load_aid_raw(self, aid, executable, codeSize, volatileDataSize = 0, nonvolatileDataSize = 0):
 		loadParameters = 'c602' + ('%04x' % codeSize)
