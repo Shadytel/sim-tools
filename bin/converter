@@ -1,0 +1,6 @@
+DIR=`dirname $0`
+
+CLASSPATH=$DIR/../javacard/bin/converter.jar:$CLASSPATH
+JFLAGS="-classpath $CLASSPATH"
+
+java $JFLAGS com.sun.javacard.converter.Converter "$@"
