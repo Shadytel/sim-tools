@@ -31,8 +31,8 @@ install:
 	$(eval CAP_FILE     := $(shell find $(BUILD_JAVACARD_DIR) -name *.cap))
 	$(eval MODULE_AID   := $(shell echo $(APPLET_AID) | sed 's/0x//g' | sed 's/\://g'))
 	$(eval INSTANCE_AID := $(shell echo $(APPLET_AID) | sed 's/0x//g' | sed 's/\://g'))
-	python ../sim-tools/toorsimtool.py         \
-		--serial /dev/ttyUSB0              \
+	../sim-tools/bin/shadysim                  \
+		$(SHADYSIM_OPTIONS)                \
 		-l $(CAP_FILE)                     \
 		-i $(CAP_FILE)                     \
 		--enable-sim-toolkit               \
