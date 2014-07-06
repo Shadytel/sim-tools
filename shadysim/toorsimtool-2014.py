@@ -50,7 +50,10 @@ def hex_ber_length(data):
                         return ('%02x' % (0x80 + (lenDataLen / 2))) + dataLen
 
 def clear_phonebook():
-        
+        for record_num in range(1, sc.record_count(['3f00', '7f10', '6f3a'])):
+                sc.update_record(['3f00', '7f10', '6f3a'],
+                                 record_num,
+                                 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
 
 def set_phonebook(slot, name, number, capability='ff'):
         num_records = sc.record_count(['3f00','7f10','6f3a'])
@@ -58,14 +61,14 @@ def set_phonebook(slot, name, number, capability='ff'):
         record_num = int(slot)
         if (record_num < 1) or (record_num > num_records):
                 raise RuntimeError("Invalid phonebook record number")
-                encoded_name = rpad(b2h(name), (record_size - 14) * 2)
-                if len(encoded_name) > ((record_size - 14) * 2):
-                        raise RuntimeError("Name is too long")
-                        if len(number) > 20:
-                                raise RuntimeError("Number is too long")
-                                encoded_number = swap_nibbles(rpad(args.set_phonebook_entry[2], 20))
-                                record = encoded_name + ('%02x' % len(number)) + capability + encoded_number + 'ffff'
-                                sc.update_record(['3f00','7f10','6f3a'], record_num, record)
+        encoded_name = rpad(b2h(name), (record_size - 14) * 2)
+        if len(encoded_name) > ((record_size - 14) * 2):
+                raise RuntimeError("Name is longer than %s bytes" % ((record_size-14)))
+        if len(number) > 20:
+                raise RuntimeError("Number is too long")
+        encoded_number = swap_nibbles(rpad(number, 20))
+        record = encoded_name + ('%02x' % len(number)) + capability + encoded_number + 'ffff'
+        sc.update_record(['3f00','7f10','6f3a'], record_num, record)
 
 def get_imsi():
         imsi_raw = (sc.read_binary(['3f00', '7f20', '6f07'])[0])
@@ -73,6 +76,10 @@ def get_imsi():
         imsi = swap_nibbles(imsi_raw[2:])[1:]
         print ("IMSI: %s" % imsi)
         return imsi
+
+# Ask the user for the name of the customer
+def get_name():
+        return raw_input("Enter subscriber name: ")
 
 def get_next_extension(db):
         cur = db.cursor()
@@ -158,16 +165,19 @@ CREATE TABLE Subscriber (
 """
 #
 if args.record:
+        name = get_name()
         imsi = get_imsi()
-        set_phonebook(1, "Shadytel Service", "3000")
-        set_phonebook(2, "Camp Registration", "3001")
-        set_phonebook(3, "Camp Administration", "3002")
+        # takes a minute or two
+        clear_phonebook()
+        set_phonebook(1, "Shadytel", "3000")
+        set_phonebook(2, "Toorcamp Reg", "3001")
+        set_phonebook(3, "Toorcamp Admin", "3002")
         set_phonebook(4, "Tone test", "720")
         set_phonebook(5, "Echo test", "722")
 
         extn = get_next_extension(dbh)
         print("Extension: %s" % extn)
 
-        dbh.cursor().execute("insert into subscriber (imsi, extension, authorized, created, updated) values (?, ?, 1, datetime('now'), datetime('now') );", (imsi, extn))
+        dbh.cursor().execute("insert into subscriber (name, imsi, extension, authorized, created, updated) values (?, ?, ?, 1, datetime('now'), datetime('now') );", (name, imsi, extn))
         dbh.commit()
 
